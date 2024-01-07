@@ -6,7 +6,7 @@ use crate::model::{
 };
 
 pub fn validate_card(card: &Card) -> Result<(), String> {
-    let mut combined_player_range = RangeSelector::new(None, None);
+    let mut combined_stage_range = RangeSelector::new(None, None);
 
     for stage in &card.stages {
         if stage.sub_stages.is_empty() {
@@ -21,35 +21,30 @@ pub fn validate_card(card: &Card) -> Result<(), String> {
 
         // Calculate player range
         let stage_range = calculate_stage_range(stage)?;
-        combined_player_range = combined_player_range.intersect(&stage_range);
+        combined_stage_range = combined_stage_range.intersect(&stage_range);
     }
 
     // Validate that the combined range is within the card range
-    match (card.min_players, combined_player_range.min) {
-        (Some(card), Some(combined)) => {
-            if card < combined {
-                return Err(format!(
-                    "This card requires atleast ({:?}) players to function but the card min is ({:?})",
-                    combined, card
-                ));
-            }
+    match (card.min_players, combined_stage_range.min) {
+        (Some(card), Some(combined)) if card < combined => {
+            return Err(format!(
+                "This card has a stage that requires atleast ({:?}) players to function but the card min is ({:?})",
+                combined, card
+            ));
         }
         (None, Some(combined)) => {
             return Err(format!(
-                "This card requires atleast ({:?}) players to function but the card min is not set",
+                "This card has a stage that requires atleast ({:?}) players to function but the card min is not set",
                 combined
             ));
         }
         _ => (),
     };
 
-    match (card.max_players, combined_player_range.max) {
+    match (card.max_players, combined_stage_range.max) {
         (Some(card), Some(combined)) => {
             if card > combined {
-                return Err(format!(
-                    "This card requires atmost ({:?}) players to function but the card max is ({:?})",
-                    combined, card
-                ));
+                
             }
         }
         (None, Some(combined)) => {
@@ -61,9 +56,23 @@ pub fn validate_card(card: &Card) -> Result<(), String> {
         _ => (),
     };
 
+    /*if let Some(combined_max) = combined_stage_range.max {
+        match card.max_players {
+            Some(card_max) if card_max > combined_max => return Err(format!(
+                "This card requires atmost ({:?}) players to function but the card max is ({:?})",
+                combined_max, card_max
+            )),
+            None => return Err(format!(
+                "This card requires atmost ({:?}) players to function but the card max is not set",
+                combined_max
+            )),
+            _ => (),
+        }
+    }*/
+
     println!(
         "card Range ------\nmin: {:?}\nmax: {:?}",
-        combined_player_range.min, combined_player_range.max
+        combined_stage_range.min, combined_stage_range.max
     );
 
     Ok(())
